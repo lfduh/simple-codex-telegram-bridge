@@ -7,11 +7,11 @@ function required(key: string): string {
 }
 
 export const config = {
-  // Discord
-  discordToken: required('DISCORD_BOT_TOKEN'),
+  // Telegram
+  telegramToken: required('TELEGRAM_BOT_TOKEN'),
   allowedUserIds: (process.env.ALLOWED_USER_IDS || '')
     .split(',')
-    .map(s => s.trim())
+    .map(s => Number(s.trim()))
     .filter(Boolean),
 
   // Codex
@@ -21,13 +21,13 @@ export const config = {
 
   // Timeouts
   approvalTimeoutMs: parseInt(process.env.APPROVAL_TIMEOUT_MS || '300000'), // 5 min
-  streamDebounceMs: parseInt(process.env.STREAM_DEBOUNCE_MS || '1500'),     // Discord rate limit buffer
+  streamDebounceMs: parseInt(process.env.STREAM_DEBOUNCE_MS || '2000'),
 
-  // Output
-  maxMessageLength: 1900, // Discord limit is 2000, leave buffer for formatting
+  // Telegram message limit (4096 chars, leave buffer)
+  maxMessageLength: 4000,
 }
 
-export function isAllowedUser(userId: string): boolean {
+export function isAllowedUser(userId: number): boolean {
   if (config.allowedUserIds.length === 0) return false
   return config.allowedUserIds.includes(userId)
 }

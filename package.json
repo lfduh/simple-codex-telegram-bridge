@@ -1,7 +1,7 @@
 {
-  "name": "simple-codex-discord-bridge",
+  "name": "simple-codex-telegram-bridge",
   "version": "0.1.0",
-  "description": "A minimal Discord bridge for Codex — simple setup, full approval control",
+  "description": "A minimal Telegram bridge for Codex — simple setup, full approval control",
   "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",
@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@openai/codex-sdk": "^0.110.0",
-    "discord.js": "^14.0.0",
-    "dotenv": "^16.0.0"
+    "dotenv": "^16.0.0",
+    "grammy": "^1.30.0"
   },
   "devDependencies": {
     "@types/node": "^22",
