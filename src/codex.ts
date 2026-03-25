@@ -1,103 +1,134 @@
-import { config } from './config.js'
+export type ChunkCallback = (text: string) => void | Promise<void>
+export type DoneCallback = (result: { fullText: string, threadId: string }) => void | Promise<void>
+export type ErrorCallback = (err: Error) => void | Promise<void>
 
-export type ChunkCallback = (text: string) => void
-export type DoneCallback = (fullText: string) => void
-export type ErrorCallback = (err: Error) => void
+type RunCodexOptions = {
+  prompt: string
+  workDir: string
+  model: string
+  threadId?: string
+  signal?: AbortSignal
+  onChunk: ChunkCallback
+  onDone: DoneCallback
+  onError: ErrorCallback
+}
 
-/**
- * Runs a Codex session with streaming output.
- *
- * Events from the Codex SDK are mapped to simple callbacks
- * so the caller (Discord bot) doesn't need to know SDK internals.
- */
-export async function runCodex(
-  prompt: string,
-  onChunk: ChunkCallback,
-  onDone: DoneCallback,
-  onError: ErrorCallback,
-  signal?: AbortSignal,
-): Promise<void> {
-  // Lazy import — keeps startup fast and surfaces missing SDK clearly
-  let runStreamed: typeof import('@openai/codex-sdk').runStreamed
+export async function runCodex(options: RunCodexOptions): Promise<void> {
+  const { prompt, workDir, model, threadId, signal, onChunk, onDone, onError } = options
+
+  let Codex: typeof import('@openai/codex-sdk').Codex
   try {
     const sdk = await import('@openai/codex-sdk')
-    runStreamed = sdk.runStreamed
+    Codex = sdk.Codex
   } catch {
     throw new Error(
       'Codex SDK not found. Run: npm install @openai/codex-sdk\n' +
-      'Then authenticate: codex auth login  (or set OPENAI_API_KEY)'
+      'Then authenticate: codex auth login (or set OPENAI_API_KEY)',
     )
   }
 
-  let fullText = ''
-
-  try {
-    const stream = runStreamed({
-      prompt,
-      cwd: config.workDir,
-      model: config.model,
-      approvalPolicy: 'never', // approval is handled by us in Discord before this point
+  const codex = new Codex()
+  const thread = threadId
+    ? codex.resumeThread(threadId, {
+      model,
+      workingDirectory: workDir,
+      approvalPolicy: 'never',
+      skipGitRepoCheck: true,
+    })
+    : codex.startThread({
+      model,
+      workingDirectory: workDir,
+      approvalPolicy: 'never',
+      skipGitRepoCheck: true,
     })
 
-    for await (const event of stream) {
-      if (signal?.aborted) break
+  const agentMessages = new Map<string, string>()
+  const agentOrder: string[] = []
+  const activityById = new Map<string, string>()
 
-      // Accumulate assistant text chunks
-      if (event.type === 'message' && event.role === 'assistant') {
-        const chunk = extractText(event)
-        if (chunk) {
-          fullText += chunk
-          onChunk(fullText)
-        }
-      }
+  const renderOutput = () => {
+    const messageText = agentOrder
+      .map(id => agentMessages.get(id) ?? '')
+      .filter(Boolean)
+      .join('\n\n')
 
-      // Tool use — show as a status line (no approval needed, already approved above)
-      if (event.type === 'tool_call' || event.type === 'function_call') {
-        const toolName = event.name ?? event.function?.name ?? 'tool'
-        const statusLine = `\n\`🔧 ${toolName}\``
-        fullText += statusLine
-        onChunk(fullText)
-      }
+    const activityText = [...activityById.values()].join('\n')
+    return [messageText, activityText].filter(Boolean).join('\n\n')
+  }
 
-      if (event.type === 'completed' || event.type === 'done') {
-        break
-      }
+  try {
+    const { events } = await thread.runStreamed(prompt, { signal })
 
+    for await (const event of events) {
       if (event.type === 'error') {
         throw new Error(event.message ?? 'Codex returned an error event')
       }
+
+      if (event.type === 'turn.failed') {
+        throw new Error(event.error.message ?? 'Codex turn failed')
+      }
+
+      if (event.type !== 'item.started' && event.type !== 'item.completed' && event.type !== 'item.updated') {
+        continue
+      }
+
+      const item = event.item
+      if (item.type === 'agent_message') {
+        if (!agentOrder.includes(item.id)) agentOrder.push(item.id)
+        agentMessages.set(item.id, item.text)
+        await onChunk(renderOutput())
+        continue
+      }
+
+      if (event.type === 'item.started') {
+        if (item.type === 'command_execution') {
+          activityById.set(item.id, `[$] ${item.command}`)
+          await onChunk(renderOutput())
+        } else if (item.type === 'mcp_tool_call') {
+          activityById.set(item.id, `[tool] ${item.server}/${item.tool}`)
+          await onChunk(renderOutput())
+        }
+        continue
+      }
+
+      if (event.type === 'item.completed') {
+        if (item.type === 'command_execution') {
+          const exitSuffix = item.exit_code !== undefined ? ` (exit ${item.exit_code})` : ''
+          activityById.set(item.id, `[$] ${item.command}${exitSuffix}`)
+          await onChunk(renderOutput())
+        } else if (item.type === 'mcp_tool_call') {
+          const statusText = item.status === 'failed'
+            ? `failed: ${item.error?.message ?? 'unknown error'}`
+            : 'done'
+          activityById.set(item.id, `[tool] ${item.server}/${item.tool} (${statusText})`)
+          await onChunk(renderOutput())
+        } else if (item.type === 'error') {
+          throw new Error(item.message)
+        }
+      }
     }
 
-    onDone(fullText || '*(no output)*')
+    const resolvedThreadId = thread.id
+    if (!resolvedThreadId) throw new Error('Codex did not return a thread id')
+
+    await onDone({
+      fullText: renderOutput() || '(no output)',
+      threadId: resolvedThreadId,
+    })
   } catch (err) {
     if (signal?.aborted) {
-      onDone(fullText + '\n\n*⛔ Stopped.*')
+      const resolvedThreadId = thread.id
+      if (!resolvedThreadId) {
+        await onError(new Error('Codex task was stopped before a thread id was created'))
+        return
+      }
+
+      await onDone({
+        fullText: (renderOutput() || '(no output)') + '\n\nStopped.',
+        threadId: resolvedThreadId,
+      })
     } else {
-      onError(err instanceof Error ? err : new Error(String(err)))
+      await onError(err instanceof Error ? err : new Error(String(err)))
     }
   }
-}
-
-/**
- * Extracts plain text from various message content shapes the SDK may return.
- * The Codex SDK event shape can vary — this handles the common cases defensively.
- */
-function extractText(event: Record<string, unknown>): string {
-  // String content
-  if (typeof event.content === 'string') return event.content
-
-  // Array of content blocks (OpenAI-style)
-  if (Array.isArray(event.content)) {
-    return event.content
-      .filter((b: unknown) => typeof b === 'object' && b !== null && (b as Record<string, unknown>).type === 'text')
-      .map((b: unknown) => (b as Record<string, unknown>).text as string)
-      .join('')
-  }
-
-  // Delta format (streaming)
-  if (event.delta && typeof (event.delta as Record<string, unknown>).text === 'string') {
-    return (event.delta as Record<string, unknown>).text as string
-  }
-
-  return ''
 }
