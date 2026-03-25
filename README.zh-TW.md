@@ -36,6 +36,16 @@ cd simple-codex-telegram-bridge
 npm install
 ```
 
+也可以直接從 GitHub 以全域 CLI 方式安裝：
+
+```bash
+npm install -g github:lfduh/simple-codex-telegram-bridge
+```
+
+這只會安裝 bridge，本機仍需先安裝並登入 `codex` CLI。
+
+安裝完成後，請先建立一個給 bot 執行的工作目錄，並在該目錄下執行 `codex-tg`。
+
 ### 2. 建立 Telegram bot
 
 1. 在 Telegram 中聯絡 [@BotFather](https://t.me/BotFather)
@@ -73,18 +83,27 @@ npm run build
 npm start
 ```
 
+如果是從 GitHub 全域安裝：
+
+```bash
+codex --version
+codex auth login
+mkdir -p ~/codex-tg
+cd ~/codex-tg
+curl -L https://raw.githubusercontent.com/lfduh/simple-codex-telegram-bridge/main/.env.example -o .env
+# 編輯 .env
+codex-tg
+```
+
 ## 使用方式
 
 ### Thread 與工作目錄規則
 
 - 一般訊息會接續目前 active thread
+- 每個 thread 建立後都會固定自己的工作目錄
 - `/new` 會建立新 thread，並沿用目前 thread 的工作目錄
 - `/new <absolute-path>` 會建立一個綁定該目錄的新 thread
 - `/switch <thread-id>` 會切換 active thread，並切回該 thread 原本的工作目錄
-- `/threads` 會列出目前 Telegram chat 裡的最近 thread
-- `/cwd` 會顯示目前 active thread 的工作目錄
-
-重點是：每個 thread 建立之後，工作目錄就固定了，不會在 thread 中途被改掉。
 
 ### 指令列表
 
@@ -92,7 +111,7 @@ npm start
 - `/status`：顯示 active thread、工作目錄、模型與任務狀態
 - `/new`：沿用目前 thread 目錄建立新 thread
 - `/new <absolute-path>`：建立綁定指定目錄的新 thread
-- `/threads`：列出目前 chat 的最近 thread
+- `/threads`：列出目前 chat 的最近 thread，並可用 inline button 切換
 - `/switch <thread-id>`：切換到目前 chat 的其他 thread
 - `/cwd`：查看目前 active thread 的工作目錄
 - `/stop`：中止目前正在執行的任務

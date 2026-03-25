@@ -36,6 +36,16 @@ cd simple-codex-telegram-bridge
 npm install
 ```
 
+Or install it directly from GitHub as a global CLI:
+
+```bash
+npm install -g github:lfduh/simple-codex-telegram-bridge
+```
+
+This installs only the bridge. You still need the `codex` CLI installed and authenticated on the same machine.
+
+After that, create a working directory for the bot and run `codex-tg` from there.
+
 ### 2. Create a Telegram bot
 
 1. Open Telegram and message [@BotFather](https://t.me/BotFather)
@@ -70,18 +80,27 @@ npm run build
 npm start
 ```
 
+If installed globally from GitHub:
+
+```bash
+codex --version
+codex auth login
+mkdir -p ~/codex-tg
+cd ~/codex-tg
+curl -L https://raw.githubusercontent.com/lfduh/simple-codex-telegram-bridge/main/.env.example -o .env
+# edit .env
+codex-tg
+```
+
 ## Usage
 
 ### Thread model
 
 - Normal messages continue the active thread.
-- `/new` creates a new thread using the current thread's directory.
+- Each thread keeps its own working directory after creation.
+- `/new` creates a new thread using the current thread directory.
 - `/new <absolute-path>` creates a new thread bound to that directory.
 - `/switch <thread-id>` switches the active thread and restores that thread's directory.
-- `/threads` shows recent threads in the current Telegram chat.
-- `/cwd` shows the active thread's directory.
-
-A thread's directory never changes after the thread is created.
 
 ### Commands
 
@@ -89,7 +108,7 @@ A thread's directory never changes after the thread is created.
 - `/status` — show active thread, directory, model, and task state
 - `/new` — create a new thread using the current thread directory
 - `/new <absolute-path>` — create a new thread bound to a specific directory
-- `/threads` — list recent threads for the current chat
+- `/threads` — list recent threads for the current chat and switch with inline buttons
 - `/switch <thread-id>` — switch to another thread from the current chat
 - `/cwd` — show the active thread directory
 - `/stop` — cancel the running task
