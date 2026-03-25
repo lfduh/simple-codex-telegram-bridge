@@ -14,11 +14,10 @@
 ## 特色
 
 - 以 chat 為單位保存 thread 歷史，不會每次都從零開始
-- `/new` 會沿用目前 thread 的工作目錄
-- `/new <absolute-path>` 可以直接開一個綁定新目錄的 thread
-- `/threads` 可列出最近 thread，並用 inline button 快速切換
-- `/cwd` 可查看目前 active thread 的工作目錄
-- `/stop` 可中止當前 Codex turn，但不會把 thread 刪掉
+- 每個 thread 建立後都會固定自己的工作目錄
+- 可直接在 Telegram 中建立或切換 thread
+- 最近 thread 可用 inline button 快速切換
+- 可中止當前 Codex turn，但不會把 thread 刪掉
 
 ## 系統需求
 
@@ -100,10 +99,7 @@ codex-tg
 ### Thread 與工作目錄規則
 
 - 一般訊息會接續目前 active thread
-- 每個 thread 建立後都會固定自己的工作目錄
-- `/new` 會建立新 thread，並沿用目前 thread 的工作目錄
-- `/new <absolute-path>` 會建立一個綁定該目錄的新 thread
-- `/switch <thread-id>` 會切換 active thread，並切回該 thread 原本的工作目錄
+- 每個 thread 建立後都會固定自己的工作目錄；切換 thread 時，也會一併切回該 thread 原本綁定的目錄
 
 ### 指令列表
 

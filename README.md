@@ -14,11 +14,10 @@ Send a task from your phone. Codex runs on your machine. You approve before it t
 ## Highlights
 
 - Persistent per-chat thread history
-- `/new` keeps the current thread directory
-- `/new <absolute-path>` starts a new thread bound to a different repo
-- `/threads` lists recent threads and lets you switch with inline buttons
-- `/cwd` shows the active thread directory
-- `/stop` cancels the current Codex turn without deleting the thread
+- Each thread keeps its own working directory after creation
+- Create or switch threads directly from Telegram
+- Recent threads can be switched with inline buttons
+- Stop the current Codex turn without deleting the thread
 
 ## Requirements
 
@@ -97,10 +96,7 @@ codex-tg
 ### Thread model
 
 - Normal messages continue the active thread.
-- Each thread keeps its own working directory after creation.
-- `/new` creates a new thread using the current thread directory.
-- `/new <absolute-path>` creates a new thread bound to that directory.
-- `/switch <thread-id>` switches the active thread and restores that thread's directory.
+- Each thread keeps its own working directory after creation, and switching threads restores that thread's directory.
 
 ### Commands
 
