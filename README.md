@@ -7,9 +7,9 @@
 [![GitHub stars](https://img.shields.io/github/stars/lfduh/simple-codex-telegram-bridge?style=social)](https://github.com/lfduh/simple-codex-telegram-bridge/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/lfduh/simple-codex-telegram-bridge)](https://github.com/lfduh/simple-codex-telegram-bridge/issues)
 
-A minimal Telegram bridge for Codex with explicit approval and persistent threads.
+A minimal Telegram bridge for Codex with persistent threads and chat-first routing.
 
-Send a task from your phone. Codex runs on your machine. You approve before it touches your code.
+Chat from your phone. Codex runs on your machine. Regular discussion stays discussion-first, and runnable tasks can still be forced when needed.
 
 ## Highlights
 
@@ -18,6 +18,8 @@ Send a task from your phone. Codex runs on your machine. You approve before it t
 - Create or switch threads directly from Telegram
 - Recent threads can be switched with inline buttons
 - Stop the current Codex turn without deleting the thread
+- Normal messages are routed as discussion or task automatically
+- `/run` lets you force a runnable task explicitly
 
 ## Requirements
 
@@ -32,7 +34,7 @@ Send a task from your phone. Codex runs on your machine. You approve before it t
 For released versions, install the package tarball from GitHub Releases:
 
 ```bash
-npm install -g https://github.com/lfduh/simple-codex-telegram-bridge/releases/download/v0.1.3/simple-codex-telegram-bridge-0.1.3.tgz
+npm install -g https://github.com/lfduh/simple-codex-telegram-bridge/releases/download/v0.1.4/simple-codex-telegram-bridge-0.1.4.tgz
 ```
 
 This installs the prebuilt CLI package. You still need the `codex` CLI installed and authenticated on the same machine.
@@ -84,7 +86,7 @@ ALLOWED_USER_IDS=your_telegram_user_id
 WORK_DIR=/Users/yourname/Projects
 ```
 
-`WORK_DIR` is optional. If it is unset, the bot will still start, but you must create the first runnable thread with `/new <absolute-path>`.
+`WORK_DIR` is optional. If it is unset, the bot can still start and handle discussion-only messages, but you must create the first runnable thread with `/new <absolute-path>` before asking it to work on files.
 
 Advanced overrides:
 
@@ -114,12 +116,15 @@ codex-tg
 ### Thread model
 
 - Normal messages continue the active thread.
+- The bot classifies normal messages as discussion or runnable tasks.
+- Discussion-mode messages stay analysis-only and should not modify files or run commands.
 - Each thread keeps its own working directory after creation, and switching threads restores that thread's directory.
 
 ### Commands
 
 - `/start` — show help
 - `codex-tg init` — create the default config template at `~/.codex-tg/.env`
+- `/run <task>` — force a runnable Codex task in the active thread
 - `/status` — show active thread, directory, model, and task state
 - `/new` — create a new thread using the current thread directory
 - `/new <absolute-path>` — create a new thread bound to a specific directory
@@ -136,7 +141,7 @@ codex-tg
 | `ALLOWED_USER_IDS` | required | Comma-separated Telegram user IDs |
 | `WORK_DIR` | unset | Default directory for the first thread when no active thread exists |
 | `CODEX_MODEL` | `o4-mini` | Codex model |
-| `APPROVAL_MODE` | `on-request` | `on-request` or `auto` |
+| `APPROVAL_MODE` | `auto` | `auto` or `on-request`; `on-request` only asks before runnable tasks |
 | `APPROVAL_TIMEOUT_MS` | `300000` | Approval timeout (5 min) |
 | `STREAM_DEBOUNCE_MS` | `2000` | Telegram edit debounce interval |
 | `STATE_FILE` | `~/.codex-tg/data/state.json` | Local JSON file for thread metadata |

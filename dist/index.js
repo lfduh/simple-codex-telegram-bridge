@@ -123,6 +123,32 @@ function shortThreadId(threadId) {
         return threadId.slice(0, 18);
     return threadId.slice(0, 8);
 }
+function classifyMessageIntent(text) {
+    const normalized = text.trim().toLowerCase();
+    if (!normalized)
+        return 'discussion';
+    const taskPatterns = [
+        /^\/run\b/,
+        /^(幫我|請|麻煩你|協助我|實作|修改|新增|建立|修正|檢查|review|debug|fix|implement|add|update|change|refactor|analyze|inspect)/i,
+        /\b(幫我|修改|新增|建立|修正|實作|重構|檢查|分析|review|debug|fix|implement|refactor)\b/i,
+    ];
+    if (taskPatterns.some(pattern => pattern.test(normalized))) {
+        return 'task';
+    }
+    return 'discussion';
+}
+function preparePrompt(text, intent) {
+    if (intent === 'discussion') {
+        return [
+            '請用討論模式回覆這則訊息。',
+            '不要執行命令，不要修改檔案，不要使用任何工具。',
+            '只提供分析、建議、澄清問題與下一步建議；如果真的需要動手操作，先說明原因並等待使用者明確要求。',
+            '',
+            text,
+        ].join('\n');
+    }
+    return text;
+}
 function describeThread(thread) {
     const safeTitle = escapeMd(thread.title);
     const safeWorkDir = escapeMd(thread.workDir ?? '(unset)');
@@ -201,6 +227,138 @@ async function sendBusyMessage(ctx, chatId) {
         await ctx.reply('⏳ Approval is pending for the current task. Respond to it or wait for timeout.');
     }
 }
+async function ensureThreadForIntent(ctx, chatId, intent) {
+    let activeThread = getCurrentThread(chatId);
+    if (!activeThread) {
+        let workDir = null;
+        if (config.initialWorkDir) {
+            workDir = await validateWorkDir(config.initialWorkDir).catch(() => null);
+            if (!workDir && intent === 'task') {
+                await ctx.reply(`Configured WORK_DIR is invalid. Use /new <absolute-path> first or fix ${envFilePath}.`);
+                return null;
+            }
+        }
+        else if (intent === 'task') {
+            await ctx.reply('No active thread or default work dir. Use /new <absolute-path> first.');
+            return null;
+        }
+        activeThread = createDraftThread(workDir);
+        await store.createThread(chatId, activeThread);
+        await store.setCurrentThread(chatId, activeThread.id);
+    }
+    if (intent === 'task' && !activeThread.workDir) {
+        await ctx.reply('This thread has no work dir. Use /new <absolute-path> to create a runnable thread.');
+        return null;
+    }
+    return activeThread;
+}
+async function executePrompt(ctx, text, intent, approvalPreview = text) {
+    const userId = ctx.from?.id ?? 0;
+    const chatId = ctx.chat?.id;
+    if (!chatId)
+        return;
+    if (isBusy(chatId)) {
+        await sendBusyMessage(ctx, chatId);
+        return;
+    }
+    const activeThread = await ensureThreadForIntent(ctx, chatId, intent);
+    if (!activeThread)
+        return;
+    if (intent === 'task' && config.approvalMode === 'on-request') {
+        pendingApprovals.add(chatId);
+        try {
+            const approved = await requestApproval(bot, chatId, userId, approvalPreview);
+            if (!approved)
+                return;
+        }
+        finally {
+            pendingApprovals.delete(chatId);
+        }
+    }
+    const abortController = new AbortController();
+    runningTasks.set(chatId, abortController);
+    const statusLabel = intent === 'discussion' ? '💬 Codex is replying…' : '⏳ Codex is working…';
+    const statusMsg = await ctx.reply(statusLabel).catch(() => null);
+    if (!statusMsg) {
+        runningTasks.delete(chatId);
+        return;
+    }
+    const extraMsgIds = [];
+    const debounce = makeDebouncer(config.streamDebounceMs);
+    const flushToTelegram = async (output) => {
+        const chunks = formatOutputChunks(output, config.maxMessageLength);
+        try {
+            await bot.api.editMessageText(chatId, statusMsg.message_id, chunks[0], {
+                parse_mode: 'Markdown',
+            });
+        }
+        catch {
+            // ignore identical content or transient edit failures
+        }
+        for (let i = 1; i < chunks.length; i++) {
+            if (i - 1 < extraMsgIds.length) {
+                try {
+                    await bot.api.editMessageText(chatId, extraMsgIds[i - 1], chunks[i], {
+                        parse_mode: 'Markdown',
+                    });
+                }
+                catch {
+                    // ignore identical content or transient edit failures
+                }
+            }
+            else {
+                const msg = await bot.api.sendMessage(chatId, chunks[i], {
+                    parse_mode: 'Markdown',
+                });
+                extraMsgIds.push(msg.message_id);
+            }
+        }
+        while (extraMsgIds.length > chunks.length - 1) {
+            const staleId = extraMsgIds.pop();
+            if (staleId) {
+                await bot.api.deleteMessage(chatId, staleId).catch(() => undefined);
+            }
+        }
+    };
+    try {
+        await runCodex({
+            prompt: preparePrompt(text, intent),
+            workDir: activeThread.workDir,
+            model: config.model,
+            threadId: activeThread.id.startsWith('draft-') ? undefined : activeThread.id,
+            signal: abortController.signal,
+            onChunk: async (output) => {
+                debounce(chatId, async () => {
+                    if (!runningTasks.has(chatId))
+                        return;
+                    await flushToTelegram(output);
+                });
+            },
+            onDone: async ({ fullText, threadId }) => {
+                runningTasks.delete(chatId);
+                const title = summarizePrompt(text);
+                await syncThreadState(chatId, activeThread, threadId, title);
+                await flushToTelegram(fullText + '\n\nDone');
+            },
+            onError: async (err) => {
+                runningTasks.delete(chatId);
+                console.error('Codex error:', err);
+                while (extraMsgIds.length > 0) {
+                    const staleId = extraMsgIds.pop();
+                    if (staleId) {
+                        await bot.api.deleteMessage(chatId, staleId).catch(() => undefined);
+                    }
+                }
+                await bot.api.editMessageText(chatId, statusMsg.message_id, `❌ *Error:* ${escapeMdV2(err.message)}`, { parse_mode: 'MarkdownV2' });
+            },
+        });
+    }
+    catch (err) {
+        runningTasks.delete(chatId);
+        console.error('Codex error:', err);
+        await bot.api.editMessageText(chatId, statusMsg.message_id, `❌ *Error:* ${escapeMdV2(err instanceof Error ? err.message : String(err))}`, { parse_mode: 'MarkdownV2' });
+    }
+}
 bot.command('start', async (ctx) => {
     if (!isAllowedUser(ctx.from?.id ?? 0))
         return;
@@ -208,6 +366,7 @@ bot.command('start', async (ctx) => {
         'Commands:\n' +
         '`/new` — new thread using the current thread directory\n' +
         '`/new <absolute-path>` — new thread bound to a specific directory\n' +
+        '`/run <prompt>` — force a runnable Codex task\n' +
         '`/threads` — list recent threads\n' +
         '`/switch <thread-id>` — switch the active thread\n' +
         '`/cwd` — show the active thread directory\n' +
@@ -229,6 +388,8 @@ bot.command('status', async (ctx) => {
         `🧵 Active thread: \`${thread?.id ?? '(none)'}\`\n` +
         `📂 Work dir: \`${workDir}\`\n` +
         `🤖 Model: \`${config.model}\`\n` +
+        `🧠 Routing: \`discussion|task\`\n` +
+        `✅ Approval: \`${config.approvalMode}\`\n` +
         `⚙️ Task: ${taskState}`, { parse_mode: 'Markdown' });
 });
 bot.command('cwd', async (ctx) => {
@@ -329,6 +490,16 @@ bot.command('new', async (ctx) => {
     await store.setCurrentThread(chatId, thread.id);
     await ctx.reply(`Started a new thread.\n\nThread: \`${thread.id}\`\nDirectory: \`${thread.workDir ?? '(unset)'}\``, { parse_mode: 'Markdown' });
 });
+bot.command('run', async (ctx) => {
+    if (!isAllowedUser(ctx.from?.id ?? 0))
+        return;
+    const text = typeof ctx.match === 'string' ? ctx.match.trim() : '';
+    if (!text) {
+        await ctx.reply('Usage: /run <task>');
+        return;
+    }
+    await executePrompt(ctx, text, 'task', text);
+});
 bot.callbackQuery(/^switch:/, async (ctx) => {
     if (!isAllowedUser(ctx.from?.id ?? 0))
         return;
@@ -359,122 +530,8 @@ bot.on('message:text', async (ctx) => {
     const text = ctx.message?.text?.trim();
     if (!text || text.startsWith('/'))
         return;
-    if (isBusy(chatId)) {
-        await sendBusyMessage(ctx, chatId);
-        return;
-    }
-    let activeThread = getCurrentThread(chatId);
-    if (!activeThread) {
-        if (!config.initialWorkDir) {
-            await ctx.reply('No active thread or default work dir. Use /new <absolute-path> first.');
-            return;
-        }
-        const initialWorkDir = await validateWorkDir(config.initialWorkDir).catch(() => null);
-        if (!initialWorkDir) {
-            await ctx.reply(`Configured WORK_DIR is invalid. Use /new <absolute-path> first or fix ${envFilePath}.`);
-            return;
-        }
-        activeThread = createDraftThread(initialWorkDir);
-        await store.createThread(chatId, activeThread);
-        await store.setCurrentThread(chatId, activeThread.id);
-    }
-    if (!activeThread.workDir) {
-        await ctx.reply('This thread has no work dir. Use /new <absolute-path> to create a runnable thread.');
-        return;
-    }
-    if (config.approvalMode === 'on-request') {
-        pendingApprovals.add(chatId);
-        try {
-            const approved = await requestApproval(bot, chatId, userId, text);
-            if (!approved)
-                return;
-        }
-        finally {
-            pendingApprovals.delete(chatId);
-        }
-    }
-    const abortController = new AbortController();
-    runningTasks.set(chatId, abortController);
-    const statusMsg = await ctx.reply('⏳ Codex is working…').catch(() => null);
-    if (!statusMsg) {
-        runningTasks.delete(chatId);
-        return;
-    }
-    const extraMsgIds = [];
-    const debounce = makeDebouncer(config.streamDebounceMs);
-    const flushToTelegram = async (output) => {
-        const chunks = formatOutputChunks(output, config.maxMessageLength);
-        try {
-            await bot.api.editMessageText(chatId, statusMsg.message_id, chunks[0], {
-                parse_mode: 'Markdown',
-            });
-        }
-        catch {
-            // ignore identical content or transient edit failures
-        }
-        for (let i = 1; i < chunks.length; i++) {
-            if (i - 1 < extraMsgIds.length) {
-                try {
-                    await bot.api.editMessageText(chatId, extraMsgIds[i - 1], chunks[i], {
-                        parse_mode: 'Markdown',
-                    });
-                }
-                catch {
-                    // ignore identical content or transient edit failures
-                }
-            }
-            else {
-                const msg = await bot.api.sendMessage(chatId, chunks[i], {
-                    parse_mode: 'Markdown',
-                });
-                extraMsgIds.push(msg.message_id);
-            }
-        }
-        while (extraMsgIds.length > chunks.length - 1) {
-            const staleId = extraMsgIds.pop();
-            if (staleId) {
-                await bot.api.deleteMessage(chatId, staleId).catch(() => undefined);
-            }
-        }
-    };
-    try {
-        await runCodex({
-            prompt: text,
-            workDir: activeThread.workDir,
-            model: config.model,
-            threadId: activeThread.id.startsWith('draft-') ? undefined : activeThread.id,
-            signal: abortController.signal,
-            onChunk: async (output) => {
-                debounce(chatId, async () => {
-                    if (!runningTasks.has(chatId))
-                        return;
-                    await flushToTelegram(output);
-                });
-            },
-            onDone: async ({ fullText, threadId }) => {
-                runningTasks.delete(chatId);
-                const title = summarizePrompt(text);
-                await syncThreadState(chatId, activeThread, threadId, title);
-                await flushToTelegram(fullText + '\n\nDone');
-            },
-            onError: async (err) => {
-                runningTasks.delete(chatId);
-                console.error('Codex error:', err);
-                while (extraMsgIds.length > 0) {
-                    const staleId = extraMsgIds.pop();
-                    if (staleId) {
-                        await bot.api.deleteMessage(chatId, staleId).catch(() => undefined);
-                    }
-                }
-                await bot.api.editMessageText(chatId, statusMsg.message_id, `❌ *Error:* ${escapeMdV2(err.message)}`, { parse_mode: 'MarkdownV2' });
-            },
-        });
-    }
-    catch (err) {
-        runningTasks.delete(chatId);
-        console.error('Codex error:', err);
-        await bot.api.editMessageText(chatId, statusMsg.message_id, `❌ *Error:* ${escapeMdV2(err instanceof Error ? err.message : String(err))}`, { parse_mode: 'MarkdownV2' });
-    }
+    const intent = classifyMessageIntent(text);
+    await executePrompt(ctx, text, intent, text);
 });
 console.log('✅ Codex Telegram Bridge starting…');
 console.log(`📂 Initial work dir: ${config.initialWorkDir ?? '(none)'}`);

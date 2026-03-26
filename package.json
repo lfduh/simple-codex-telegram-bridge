@@ -1,7 +1,7 @@
 {
   "name": "simple-codex-telegram-bridge",
-  "version": "0.1.3",
-  "description": "A minimal Telegram bridge for Codex — simple setup, full approval control",
+  "version": "0.1.4",
+  "description": "A minimal Telegram bridge for Codex — persistent threads and chat-first routing",
   "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",

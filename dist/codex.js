@@ -13,13 +13,13 @@ export async function runCodex(options) {
     const thread = threadId
         ? codex.resumeThread(threadId, {
             model,
-            workingDirectory: workDir,
+            ...(workDir ? { workingDirectory: workDir } : {}),
             approvalPolicy: 'never',
             skipGitRepoCheck: true,
         })
         : codex.startThread({
             model,
-            workingDirectory: workDir,
+            ...(workDir ? { workingDirectory: workDir } : {}),
             approvalPolicy: 'never',
             skipGitRepoCheck: true,
         });

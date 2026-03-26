@@ -15,7 +15,7 @@ export const config = {
         .filter(Boolean),
     initialWorkDir: process.env.WORK_DIR || null,
     model: process.env.CODEX_MODEL || 'o4-mini',
-    approvalMode: (process.env.APPROVAL_MODE || 'on-request'),
+    approvalMode: (process.env.APPROVAL_MODE || 'auto'),
     stateFile: process.env.STATE_FILE || defaultStateFile,
     approvalTimeoutMs: parseInt(process.env.APPROVAL_TIMEOUT_MS || '300000'),
     streamDebounceMs: parseInt(process.env.STREAM_DEBOUNCE_MS || '2000'),

@@ -18,7 +18,7 @@ export const config = {
 
   initialWorkDir: process.env.WORK_DIR || null,
   model: process.env.CODEX_MODEL || 'o4-mini',
-  approvalMode: (process.env.APPROVAL_MODE || 'on-request') as 'on-request' | 'auto',
+  approvalMode: (process.env.APPROVAL_MODE || 'auto') as 'on-request' | 'auto',
   stateFile: process.env.STATE_FILE || defaultStateFile,
 
   approvalTimeoutMs: parseInt(process.env.APPROVAL_TIMEOUT_MS || '300000'),

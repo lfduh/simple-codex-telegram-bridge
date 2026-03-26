@@ -4,7 +4,7 @@ export type ErrorCallback = (err: Error) => void | Promise<void>
 
 type RunCodexOptions = {
   prompt: string
-  workDir: string
+  workDir?: string | null
   model: string
   threadId?: string
   signal?: AbortSignal
@@ -31,13 +31,13 @@ export async function runCodex(options: RunCodexOptions): Promise<void> {
   const thread = threadId
     ? codex.resumeThread(threadId, {
       model,
-      workingDirectory: workDir,
+      ...(workDir ? { workingDirectory: workDir } : {}),
       approvalPolicy: 'never',
       skipGitRepoCheck: true,
     })
     : codex.startThread({
       model,
-      workingDirectory: workDir,
+      ...(workDir ? { workingDirectory: workDir } : {}),
       approvalPolicy: 'never',
       skipGitRepoCheck: true,
     })

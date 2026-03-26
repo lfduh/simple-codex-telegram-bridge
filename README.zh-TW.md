@@ -7,7 +7,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/lfduh/simple-codex-telegram-bridge?style=social)](https://github.com/lfduh/simple-codex-telegram-bridge/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/lfduh/simple-codex-telegram-bridge)](https://github.com/lfduh/simple-codex-telegram-bridge/issues)
 
-這是一個讓你用 Telegram 遠端丟任務給 Codex 的極簡 bridge。你在手機上發訊息，Codex 在你的電腦上執行；真正動手前，會先經過你批准。
+這是一個讓你用 Telegram 遠端與 Codex 對話的極簡 bridge。你在手機上發訊息，Codex 在你的電腦上執行；一般討論會先走討論模式，真的要執行時也可以明確切到任務模式。
 
 如果你想要的是一個好裝、好懂、沒有一堆額外抽象層的工具，這個專案就是往這個方向設計的。
 
@@ -18,6 +18,8 @@
 - 可直接在 Telegram 中建立或切換 thread
 - 最近 thread 可用 inline button 快速切換
 - 可中止當前 Codex turn，但不會把 thread 刪掉
+- 一般訊息會自動分流成討論或任務
+- 可用 `/run` 明確強制送出可執行任務
 
 ## 系統需求
 
@@ -32,7 +34,7 @@
 正式版本建議直接從 GitHub Releases 安裝 `.tgz` 套件：
 
 ```bash
-npm install -g https://github.com/lfduh/simple-codex-telegram-bridge/releases/download/v0.1.3/simple-codex-telegram-bridge-0.1.3.tgz
+npm install -g https://github.com/lfduh/simple-codex-telegram-bridge/releases/download/v0.1.4/simple-codex-telegram-bridge-0.1.4.tgz
 ```
 
 這會直接安裝已打包好的 CLI，本機仍需先安裝並登入 `codex` CLI。
@@ -87,7 +89,7 @@ WORK_DIR=/Users/yourname/Projects
 `WORK_DIR` 是可選的。
 
 - 如果有設定：當還沒有 active thread 時，第一個 thread 會先用這個目錄
-- 如果沒設定：bot 還是能啟動，但你要先用 `/new <absolute-path>` 建立第一個可執行的 thread
+- 如果沒設定：bot 還是能啟動，也能先處理純討論訊息；但要動到檔案前，仍需先用 `/new <absolute-path>` 建立第一個可執行的 thread
 
 進階覆蓋方式：
 
@@ -118,12 +120,15 @@ codex-tg
 ### Thread 與工作目錄規則
 
 - 一般訊息會接續目前 active thread
+- bot 會先判斷訊息較像討論還是可執行任務
+- 討論模式只回覆分析與建議，不會主動執行命令或修改檔案
 - 每個 thread 建立後都會固定自己的工作目錄；切換 thread 時，也會一併切回該 thread 原本綁定的目錄
 
 ### 指令列表
 
 - `/start`：顯示說明
 - `codex-tg init`：在 `~/.codex-tg/.env` 建立預設設定範本
+- `/run <task>`：在目前 active thread 中明確執行任務
 - `/status`：顯示 active thread、工作目錄、模型與任務狀態
 - `/new`：沿用目前 thread 目錄建立新 thread
 - `/new <absolute-path>`：建立綁定指定目錄的新 thread
@@ -140,7 +145,7 @@ codex-tg
 | `ALLOWED_USER_IDS` | 必填 | 允許操作 bot 的 Telegram user ID，逗號分隔 |
 | `WORK_DIR` | 未設定 | 沒有 active thread 時，第一個 thread 可用的預設目錄 |
 | `CODEX_MODEL` | `o4-mini` | Codex 使用的模型 |
-| `APPROVAL_MODE` | `on-request` | `on-request` 或 `auto` |
+| `APPROVAL_MODE` | `auto` | `auto` 或 `on-request`；只有可執行任務才會跳 Telegram 批准 |
 | `APPROVAL_TIMEOUT_MS` | `300000` | 批准逾時時間（5 分鐘） |
 | `STREAM_DEBOUNCE_MS` | `2000` | Telegram 訊息更新的 debounce 間隔 |
 | `STATE_FILE` | `~/.codex-tg/data/state.json` | 保存本地 thread metadata 的 JSON 檔 |
