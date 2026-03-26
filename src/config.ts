@@ -17,7 +17,7 @@ export const config = {
     .filter(Boolean),
 
   initialWorkDir: process.env.WORK_DIR || null,
-  model: process.env.CODEX_MODEL || 'o4-mini',
+  model: process.env.CODEX_MODEL || 'gpt-5-mini',
   approvalMode: (process.env.APPROVAL_MODE || 'auto') as 'on-request' | 'auto',
   stateFile: process.env.STATE_FILE || defaultStateFile,
 

@@ -34,7 +34,7 @@
 正式版本建議直接從 GitHub Releases 安裝 `.tgz` 套件：
 
 ```bash
-npm install -g https://github.com/lfduh/simple-codex-telegram-bridge/releases/download/v0.1.4/simple-codex-telegram-bridge-0.1.4.tgz
+npm install -g https://github.com/lfduh/simple-codex-telegram-bridge/releases/download/v0.1.5/simple-codex-telegram-bridge-0.1.5.tgz
 ```
 
 這會直接安裝已打包好的 CLI，本機仍需先安裝並登入 `codex` CLI。
@@ -144,7 +144,7 @@ codex-tg
 | `TELEGRAM_BOT_TOKEN` | 必填 | 由 @BotFather 取得 |
 | `ALLOWED_USER_IDS` | 必填 | 允許操作 bot 的 Telegram user ID，逗號分隔 |
 | `WORK_DIR` | 未設定 | 沒有 active thread 時，第一個 thread 可用的預設目錄 |
-| `CODEX_MODEL` | `o4-mini` | Codex 使用的模型 |
+| `CODEX_MODEL` | `gpt-5-mini` | Codex 使用的模型 |
 | `APPROVAL_MODE` | `auto` | `auto` 或 `on-request`；只有可執行任務才會跳 Telegram 批准 |
 | `APPROVAL_TIMEOUT_MS` | `300000` | 批准逾時時間（5 分鐘） |
 | `STREAM_DEBOUNCE_MS` | `2000` | Telegram 訊息更新的 debounce 間隔 |

@@ -34,7 +34,7 @@ Chat from your phone. Codex runs on your machine. Regular discussion stays discu
 For released versions, install the package tarball from GitHub Releases:
 
 ```bash
-npm install -g https://github.com/lfduh/simple-codex-telegram-bridge/releases/download/v0.1.4/simple-codex-telegram-bridge-0.1.4.tgz
+npm install -g https://github.com/lfduh/simple-codex-telegram-bridge/releases/download/v0.1.5/simple-codex-telegram-bridge-0.1.5.tgz
 ```
 
 This installs the prebuilt CLI package. You still need the `codex` CLI installed and authenticated on the same machine.
@@ -140,7 +140,7 @@ codex-tg
 | `TELEGRAM_BOT_TOKEN` | required | From @BotFather |
 | `ALLOWED_USER_IDS` | required | Comma-separated Telegram user IDs |
 | `WORK_DIR` | unset | Default directory for the first thread when no active thread exists |
-| `CODEX_MODEL` | `o4-mini` | Codex model |
+| `CODEX_MODEL` | `gpt-5-mini` | Codex model |
 | `APPROVAL_MODE` | `auto` | `auto` or `on-request`; `on-request` only asks before runnable tasks |
 | `APPROVAL_TIMEOUT_MS` | `300000` | Approval timeout (5 min) |
 | `STREAM_DEBOUNCE_MS` | `2000` | Telegram edit debounce interval |

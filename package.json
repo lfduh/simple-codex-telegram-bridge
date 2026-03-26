@@ -1,6 +1,6 @@
 {
   "name": "simple-codex-telegram-bridge",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A minimal Telegram bridge for Codex — persistent threads and chat-first routing",
   "type": "module",
   "scripts": {
