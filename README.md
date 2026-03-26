@@ -58,20 +58,39 @@ Message [@userinfobot](https://t.me/userinfobot) on Telegram to get your numeric
 
 ### 4. Configure
 
+The bridge reads its config from a user-level env file:
+
+- macOS/Linux: `~/.codex-tg/.env`
+- Windows: `%USERPROFILE%\.codex-tg\.env`
+
+Initialize the default config file with:
+
 ```bash
-cp .env.example .env
+codex-tg init
 ```
 
-Edit `.env`:
+Or create it manually:
+
+```bash
+mkdir -p ~/.codex-tg
+cp .env.example ~/.codex-tg/.env
+```
+
+Example `.env`:
 
 ```env
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 ALLOWED_USER_IDS=your_telegram_user_id
-WORK_DIR=/optional/default/project/path
+WORK_DIR=/Users/yourname/Projects
 ```
 
 `WORK_DIR` is optional. If it is unset, the bot will still start, but you must create the first runnable thread with `/new <absolute-path>`.
 
+Advanced overrides:
+
+- `CODEX_TG_HOME` overrides the config directory
+- `CODEX_TG_ENV_FILE` overrides the env file path
+- `STATE_FILE` overrides the local state file path
 ### 5. Run
 
 ```bash
@@ -85,10 +104,8 @@ If installed from a GitHub Release asset:
 ```bash
 codex --version
 codex auth login
-mkdir -p ~/codex-tg
-cd ~/codex-tg
-curl -L https://raw.githubusercontent.com/lfduh/simple-codex-telegram-bridge/main/.env.example -o .env
-# edit .env
+codex-tg init
+# edit ~/.codex-tg/.env
 codex-tg
 ```
 
@@ -102,6 +119,7 @@ codex-tg
 ### Commands
 
 - `/start` — show help
+- `codex-tg init` — create the default config template at `~/.codex-tg/.env`
 - `/status` — show active thread, directory, model, and task state
 - `/new` — create a new thread using the current thread directory
 - `/new <absolute-path>` — create a new thread bound to a specific directory
@@ -121,7 +139,7 @@ codex-tg
 | `APPROVAL_MODE` | `on-request` | `on-request` or `auto` |
 | `APPROVAL_TIMEOUT_MS` | `300000` | Approval timeout (5 min) |
 | `STREAM_DEBOUNCE_MS` | `2000` | Telegram edit debounce interval |
-| `STATE_FILE` | `./data/state.json` | Local JSON file for thread metadata |
+| `STATE_FILE` | `~/.codex-tg/data/state.json` | Local JSON file for thread metadata |
 | `MAX_RECENT_THREADS` | `10` | Number of recent threads kept per chat |
 
 ## Star History
@@ -131,12 +149,13 @@ codex-tg
 ## Notes
 
 - The bot never falls back to `process.cwd()` for Codex work.
-- Thread metadata is stored locally in `STATE_FILE`.
+- Thread metadata is stored locally in `STATE_FILE` under the config directory by default.
 - Full conversation history stays in Codex session storage.
 - Only users listed in `ALLOWED_USER_IDS` can use the bot.
 
 ## License
 
 MIT
+
 
 

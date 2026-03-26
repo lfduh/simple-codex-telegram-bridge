@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { constants } from 'node:fs';
-import { access, readFile, stat } from 'node:fs/promises';
+import { access, copyFile, mkdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { defaultConfigDir, envFilePath } from './paths.js';
 const cliArgs = new Set(process.argv.slice(2));
 if (cliArgs.has('--help') || cliArgs.has('-h')) {
     console.log([
@@ -11,11 +12,18 @@ if (cliArgs.has('--help') || cliArgs.has('-h')) {
         '  codex-tg',
         '  codex-tg --help',
         '  codex-tg --version',
+        '  codex-tg init',
         '',
         'Environment:',
         '  TELEGRAM_BOT_TOKEN  Telegram bot token from @BotFather',
         '  ALLOWED_USER_IDS    Comma-separated Telegram user IDs',
         '  WORK_DIR            Optional default project path for the first thread',
+        '  CODEX_TG_HOME       Optional override for the config directory',
+        '  CODEX_TG_ENV_FILE   Optional override for the env file path',
+        '',
+        'Default config locations:',
+        `  Config dir: ${defaultConfigDir}`,
+        `  Env file:   ${envFilePath}`,
     ].join('\n'));
     process.exit(0);
 }
@@ -24,6 +32,38 @@ if (cliArgs.has('--version') || cliArgs.has('-V')) {
     const packageJson = JSON.parse(await readFile(packageJsonUrl, 'utf8'));
     console.log(packageJson.version ?? '0.0.0');
     process.exit(0);
+}
+const envExamplePath = new URL('../.env.example', import.meta.url);
+async function ensureEnvFileExists() {
+    try {
+        await access(envFilePath, constants.F_OK);
+        return false;
+    }
+    catch (err) {
+        const error = err;
+        if (error.code !== 'ENOENT')
+            throw err;
+    }
+    await mkdir(path.dirname(envFilePath), { recursive: true });
+    await copyFile(envExamplePath, envFilePath);
+    return true;
+}
+if (cliArgs.has('init')) {
+    const created = await ensureEnvFileExists();
+    if (created) {
+        console.log(`Created config template at ${envFilePath}`);
+        console.log('Edit the file, then run codex-tg again.');
+    }
+    else {
+        console.log(`Config file already exists at ${envFilePath}`);
+    }
+    process.exit(0);
+}
+const createdEnvFile = await ensureEnvFileExists();
+if (createdEnvFile) {
+    console.error(`Created config template at ${envFilePath}`);
+    console.error('Edit the file, then run codex-tg again.');
+    process.exit(1);
 }
 const { Bot, InlineKeyboard } = await import('grammy');
 const { registerApprovalHandlers, requestApproval } = await import('./approval.js');
@@ -331,7 +371,7 @@ bot.on('message:text', async (ctx) => {
         }
         const initialWorkDir = await validateWorkDir(config.initialWorkDir).catch(() => null);
         if (!initialWorkDir) {
-            await ctx.reply('Configured WORK_DIR is invalid. Use /new <absolute-path> first or fix .env.');
+            await ctx.reply(`Configured WORK_DIR is invalid. Use /new <absolute-path> first or fix ${envFilePath}.`);
             return;
         }
         activeThread = createDraftThread(initialWorkDir);

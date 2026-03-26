@@ -58,22 +58,42 @@ npm link
 
 ### 4. 設定環境變數
 
+bridge 會從使用者層級的 env 檔讀設定：
+
+- macOS/Linux：`~/.codex-tg/.env`
+- Windows：`%USERPROFILE%\.codex-tg\.env`
+
+可先用這個指令初始化預設設定檔：
+
 ```bash
-cp .env.example .env
+codex-tg init
 ```
 
-打開 `.env` 後，至少填這幾個值：
+或手動建立：
+
+```bash
+mkdir -p ~/.codex-tg
+cp .env.example ~/.codex-tg/.env
+```
+
+`.env` 至少填這幾個值：
 
 ```env
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 ALLOWED_USER_IDS=your_telegram_user_id
-WORK_DIR=/optional/default/project/path
+WORK_DIR=/Users/yourname/Projects
 ```
 
 `WORK_DIR` 是可選的。
 
 - 如果有設定：當還沒有 active thread 時，第一個 thread 會先用這個目錄
 - 如果沒設定：bot 還是能啟動，但你要先用 `/new <absolute-path>` 建立第一個可執行的 thread
+
+進階覆蓋方式：
+
+- `CODEX_TG_HOME`：覆蓋預設設定目錄
+- `CODEX_TG_ENV_FILE`：覆蓋 env 檔位置
+- `STATE_FILE`：覆蓋本地 state 檔路徑
 
 ### 5. 啟動
 
@@ -88,10 +108,8 @@ npm start
 ```bash
 codex --version
 codex auth login
-mkdir -p ~/codex-tg
-cd ~/codex-tg
-curl -L https://raw.githubusercontent.com/lfduh/simple-codex-telegram-bridge/main/.env.example -o .env
-# 編輯 .env
+codex-tg init
+# 編輯 ~/.codex-tg/.env
 codex-tg
 ```
 
@@ -105,6 +123,7 @@ codex-tg
 ### 指令列表
 
 - `/start`：顯示說明
+- `codex-tg init`：在 `~/.codex-tg/.env` 建立預設設定範本
 - `/status`：顯示 active thread、工作目錄、模型與任務狀態
 - `/new`：沿用目前 thread 目錄建立新 thread
 - `/new <absolute-path>`：建立綁定指定目錄的新 thread
@@ -124,7 +143,7 @@ codex-tg
 | `APPROVAL_MODE` | `on-request` | `on-request` 或 `auto` |
 | `APPROVAL_TIMEOUT_MS` | `300000` | 批准逾時時間（5 分鐘） |
 | `STREAM_DEBOUNCE_MS` | `2000` | Telegram 訊息更新的 debounce 間隔 |
-| `STATE_FILE` | `./data/state.json` | 保存本地 thread metadata 的 JSON 檔 |
+| `STATE_FILE` | `~/.codex-tg/data/state.json` | 保存本地 thread metadata 的 JSON 檔 |
 | `MAX_RECENT_THREADS` | `10` | 每個 chat 保留的最近 thread 數量 |
 
 ## Star History
@@ -134,12 +153,14 @@ codex-tg
 ## 注意事項
 
 - bot 不會再用 `process.cwd()` 當成 Codex 的 fallback 工作目錄
-- thread metadata 會保存到 `STATE_FILE`
+- thread metadata 預設會保存在設定目錄下的 `STATE_FILE`
 - 完整對話內容仍保存在 Codex session storage
 - 只有 `ALLOWED_USER_IDS` 裡的使用者可以操作 bot
 
 ## 授權
 
 MIT
+
+
 
 

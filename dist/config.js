@@ -1,5 +1,6 @@
-import 'dotenv/config';
-import path from 'node:path';
+import { config as loadEnv } from 'dotenv';
+import { defaultStateFile, envFilePath } from './paths.js';
+loadEnv({ path: envFilePath });
 function required(key) {
     const val = process.env[key];
     if (!val)
@@ -15,7 +16,7 @@ export const config = {
     initialWorkDir: process.env.WORK_DIR || null,
     model: process.env.CODEX_MODEL || 'o4-mini',
     approvalMode: (process.env.APPROVAL_MODE || 'on-request'),
-    stateFile: process.env.STATE_FILE || path.resolve(process.cwd(), 'data', 'state.json'),
+    stateFile: process.env.STATE_FILE || defaultStateFile,
     approvalTimeoutMs: parseInt(process.env.APPROVAL_TIMEOUT_MS || '300000'),
     streamDebounceMs: parseInt(process.env.STREAM_DEBOUNCE_MS || '2000'),
     maxMessageLength: 4000,
