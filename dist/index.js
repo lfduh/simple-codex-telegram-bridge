@@ -1,12 +1,35 @@
 #!/usr/bin/env node
 import { constants } from 'node:fs';
-import { access, stat } from 'node:fs/promises';
+import { access, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { Bot, InlineKeyboard } from 'grammy';
-import { registerApprovalHandlers, requestApproval } from './approval.js';
-import { config, isAllowedUser } from './config.js';
-import { runCodex } from './codex.js';
-import { StateStore, createDraftThread, summarizePrompt } from './state.js';
+const cliArgs = new Set(process.argv.slice(2));
+if (cliArgs.has('--help') || cliArgs.has('-h')) {
+    console.log([
+        'simple-codex-telegram-bridge',
+        '',
+        'Usage:',
+        '  codex-tg',
+        '  codex-tg --help',
+        '  codex-tg --version',
+        '',
+        'Environment:',
+        '  TELEGRAM_BOT_TOKEN  Telegram bot token from @BotFather',
+        '  ALLOWED_USER_IDS    Comma-separated Telegram user IDs',
+        '  WORK_DIR            Optional default project path for the first thread',
+    ].join('\n'));
+    process.exit(0);
+}
+if (cliArgs.has('--version') || cliArgs.has('-V')) {
+    const packageJsonUrl = new URL('../package.json', import.meta.url);
+    const packageJson = JSON.parse(await readFile(packageJsonUrl, 'utf8'));
+    console.log(packageJson.version ?? '0.0.0');
+    process.exit(0);
+}
+const { Bot, InlineKeyboard } = await import('grammy');
+const { registerApprovalHandlers, requestApproval } = await import('./approval.js');
+const { config, isAllowedUser } = await import('./config.js');
+const { runCodex } = await import('./codex.js');
+const { StateStore, createDraftThread, summarizePrompt } = await import('./state.js');
 function makeDebouncer(flushMs) {
     const timers = new Map();
     return function debounce(key, fn) {
