@@ -27,23 +27,24 @@
 
 ## 安裝與設定
 
-### 1. Clone 專案並安裝依賴
+### 1. 安裝
+
+正式版本建議直接從 GitHub Releases 安裝 `.tgz` 套件：
+
+```bash
+npm install -g https://github.com/lfduh/simple-codex-telegram-bridge/releases/download/v0.1.0/simple-codex-telegram-bridge-0.1.0.tgz
+```
+
+這會直接安裝已打包好的 CLI，本機仍需先安裝並登入 `codex` CLI。
+
+如果是本機開發，請 clone 專案後用 `npm link`：
 
 ```bash
 git clone https://github.com/lfduh/simple-codex-telegram-bridge.git
 cd simple-codex-telegram-bridge
 npm install
+npm link
 ```
-
-也可以直接從 GitHub 以全域 CLI 方式安裝：
-
-```bash
-npm install -g github:lfduh/simple-codex-telegram-bridge
-```
-
-這會直接安裝 repo 內已編譯好的 CLI，本機仍需先安裝並登入 `codex` CLI。
-
-安裝完成後，請先建立一個給 bot 執行的工作目錄，並在該目錄下執行 `codex-tg`。
 
 ### 2. 建立 Telegram bot
 
@@ -82,7 +83,7 @@ npm run build
 npm start
 ```
 
-如果是從 GitHub 全域安裝：
+如果是從 GitHub Release asset 安裝：
 
 ```bash
 codex --version
@@ -140,3 +141,4 @@ codex-tg
 ## 授權
 
 MIT
+

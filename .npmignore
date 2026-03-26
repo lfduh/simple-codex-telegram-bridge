@@ -1,0 +1,7 @@
+src/
+.github/
+.npm-pack-cache/
+node_modules/
+tsconfig.json
+.gitignore
+AGENTS.md

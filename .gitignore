@@ -139,3 +139,6 @@ vite.config.ts.timestamp-*
 
 # Keep compiled CLI output in git for GitHub installs
 !dist/
+
+# Local npm pack cache
+.npm-pack-cache/

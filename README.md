@@ -27,23 +27,24 @@ Send a task from your phone. Codex runs on your machine. You approve before it t
 
 ## Setup
 
-### 1. Clone and install
+### 1. Install
+
+For released versions, install the package tarball from GitHub Releases:
+
+```bash
+npm install -g https://github.com/lfduh/simple-codex-telegram-bridge/releases/download/v0.1.0/simple-codex-telegram-bridge-0.1.0.tgz
+```
+
+This installs the prebuilt CLI package. You still need the `codex` CLI installed and authenticated on the same machine.
+
+For local development, clone the repo and use `npm link`:
 
 ```bash
 git clone https://github.com/lfduh/simple-codex-telegram-bridge.git
 cd simple-codex-telegram-bridge
 npm install
+npm link
 ```
-
-Or install it directly from GitHub as a global CLI:
-
-```bash
-npm install -g github:lfduh/simple-codex-telegram-bridge
-```
-
-This installs the prebuilt CLI from GitHub. You still need the `codex` CLI installed and authenticated on the same machine.
-
-After that, create a working directory for the bot and run `codex-tg` from there.
 
 ### 2. Create a Telegram bot
 
@@ -79,7 +80,7 @@ npm run build
 npm start
 ```
 
-If installed globally from GitHub:
+If installed from a GitHub Release asset:
 
 ```bash
 codex --version
@@ -137,3 +138,4 @@ codex-tg
 ## License
 
 MIT
+
