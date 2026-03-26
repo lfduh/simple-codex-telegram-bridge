@@ -32,7 +32,7 @@ Send a task from your phone. Codex runs on your machine. You approve before it t
 For released versions, install the package tarball from GitHub Releases:
 
 ```bash
-npm install -g https://github.com/lfduh/simple-codex-telegram-bridge/releases/download/v0.1.0/simple-codex-telegram-bridge-0.1.0.tgz
+npm install -g https://github.com/lfduh/simple-codex-telegram-bridge/releases/download/v0.1.2/simple-codex-telegram-bridge-0.1.2.tgz
 ```
 
 This installs the prebuilt CLI package. You still need the `codex` CLI installed and authenticated on the same machine.
@@ -138,4 +138,5 @@ codex-tg
 ## License
 
 MIT
+
 

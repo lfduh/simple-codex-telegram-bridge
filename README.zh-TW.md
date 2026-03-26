@@ -32,7 +32,7 @@
 正式版本建議直接從 GitHub Releases 安裝 `.tgz` 套件：
 
 ```bash
-npm install -g https://github.com/lfduh/simple-codex-telegram-bridge/releases/download/v0.1.0/simple-codex-telegram-bridge-0.1.0.tgz
+npm install -g https://github.com/lfduh/simple-codex-telegram-bridge/releases/download/v0.1.2/simple-codex-telegram-bridge-0.1.2.tgz
 ```
 
 這會直接安裝已打包好的 CLI，本機仍需先安裝並登入 `codex` CLI。
@@ -141,4 +141,5 @@ codex-tg
 ## 授權
 
 MIT
+
 
