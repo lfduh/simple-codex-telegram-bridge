@@ -41,7 +41,7 @@ Or install it directly from GitHub as a global CLI:
 npm install -g github:lfduh/simple-codex-telegram-bridge
 ```
 
-This installs only the bridge. You still need the `codex` CLI installed and authenticated on the same machine.
+This installs the prebuilt CLI from GitHub. You still need the `codex` CLI installed and authenticated on the same machine.
 
 After that, create a working directory for the bot and run `codex-tg` from there.
 

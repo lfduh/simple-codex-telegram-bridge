@@ -41,7 +41,7 @@ npm install
 npm install -g github:lfduh/simple-codex-telegram-bridge
 ```
 
-這只會安裝 bridge，本機仍需先安裝並登入 `codex` CLI。
+這會直接安裝 repo 內已編譯好的 CLI，本機仍需先安裝並登入 `codex` CLI。
 
 安裝完成後，請先建立一個給 bot 執行的工作目錄，並在該目錄下執行 `codex-tg`。
 
