@@ -93,40 +93,21 @@ function makeDebouncer(flushMs: number) {
   }
 }
 
-function wrapCodeChunk(text: string): string {
-  return `\`\`\`\n${text.replace(/```/g, '``\\`')}\n\`\`\``
-}
-
 function formatOutputChunks(text: string, maxLen: number): string[] {
   const fallback = text || '(no output)'
   const chunks: string[] = []
   let remaining = fallback
 
   while (remaining.length > 0) {
-    let candidateSize = Math.min(remaining.length, maxLen)
-
-    while (candidateSize > 0) {
-      const slice = remaining.slice(0, candidateSize)
-      const lastNewline = slice.lastIndexOf('\n')
-      const cutAt = lastNewline > candidateSize / 2 ? lastNewline : candidateSize
-      const rawChunk = remaining.slice(0, cutAt)
-      const wrapped = wrapCodeChunk(rawChunk)
-      if (wrapped.length <= maxLen) {
-        chunks.push(wrapped)
-        remaining = remaining.slice(cutAt)
-        break
-      }
-      candidateSize = cutAt - 1
-    }
-
-    if (candidateSize <= 0) {
-      const singleChar = remaining[0]
-      chunks.push(wrapCodeChunk(singleChar))
-      remaining = remaining.slice(1)
-    }
+    const candidateSize = Math.min(remaining.length, maxLen)
+    const slice = remaining.slice(0, candidateSize)
+    const lastNewline = slice.lastIndexOf('\n')
+    const cutAt = lastNewline > candidateSize / 2 ? lastNewline : candidateSize
+    chunks.push(remaining.slice(0, cutAt))
+    remaining = remaining.slice(cutAt === lastNewline ? cutAt + 1 : cutAt)
   }
 
-  return chunks.length > 0 ? chunks : [wrapCodeChunk('(no output)')]
+  return chunks.length > 0 ? chunks : ['(no output)']
 }
 
 function escapeMdV2(text: string): string {
@@ -147,7 +128,6 @@ function classifyMessageIntent(text: string): MessageIntent {
   if (!normalized) return 'discussion'
 
   const taskPatterns = [
-    /^\/run\b/,
     /^(幫我|請|麻煩你|協助我|實作|修改|新增|建立|修正|檢查|review|debug|fix|implement|add|update|change|refactor|analyze|inspect)/i,
     /\b(幫我|修改|新增|建立|修正|實作|重構|檢查|分析|review|debug|fix|implement|refactor)\b/i,
   ]
@@ -326,9 +306,7 @@ async function executePrompt(
   const flushToTelegram = async (output: string) => {
     const chunks = formatOutputChunks(output, config.maxMessageLength)
     try {
-      await bot.api.editMessageText(chatId, statusMsg.message_id, chunks[0], {
-        parse_mode: 'Markdown',
-      })
+      await bot.api.editMessageText(chatId, statusMsg.message_id, chunks[0])
     } catch {
       // ignore identical content or transient edit failures
     }
@@ -336,16 +314,12 @@ async function executePrompt(
     for (let i = 1; i < chunks.length; i++) {
       if (i - 1 < extraMsgIds.length) {
         try {
-          await bot.api.editMessageText(chatId, extraMsgIds[i - 1], chunks[i], {
-            parse_mode: 'Markdown',
-          })
+          await bot.api.editMessageText(chatId, extraMsgIds[i - 1], chunks[i])
         } catch {
           // ignore identical content or transient edit failures
         }
       } else {
-        const msg = await bot.api.sendMessage(chatId, chunks[i], {
-          parse_mode: 'Markdown',
-        })
+        const msg = await bot.api.sendMessage(chatId, chunks[i])
         extraMsgIds.push(msg.message_id)
       }
     }
@@ -375,7 +349,10 @@ async function executePrompt(
         runningTasks.delete(chatId)
         const title = summarizePrompt(text)
         await syncThreadState(chatId, activeThread, threadId, title)
-        await flushToTelegram(fullText + '\n\nDone')
+        const finalOutput = intent === 'discussion'
+          ? fullText
+          : `${fullText}\n\nDone`
+        await flushToTelegram(finalOutput)
       },
       onError: async (err) => {
         runningTasks.delete(chatId)

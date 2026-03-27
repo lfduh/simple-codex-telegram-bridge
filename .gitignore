@@ -142,3 +142,5 @@ vite.config.ts.timestamp-*
 
 # Local npm pack cache
 .npm-pack-cache/
+/reference
+OPENCLAW_EXPERIENCE_GAP.md

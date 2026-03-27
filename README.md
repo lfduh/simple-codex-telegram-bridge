@@ -140,7 +140,7 @@ codex-tg
 | `TELEGRAM_BOT_TOKEN` | required | From @BotFather |
 | `ALLOWED_USER_IDS` | required | Comma-separated Telegram user IDs |
 | `WORK_DIR` | unset | Default directory for the first thread when no active thread exists |
-| `CODEX_MODEL` | `gpt-5-mini` | Codex model |
+| `CODEX_MODEL` | `gpt-5.1-codex-mini` | Codex model; suitable for `codex auth login` with a ChatGPT account |
 | `APPROVAL_MODE` | `auto` | `auto` or `on-request`; `on-request` only asks before runnable tasks |
 | `APPROVAL_TIMEOUT_MS` | `300000` | Approval timeout (5 min) |
 | `STREAM_DEBOUNCE_MS` | `2000` | Telegram edit debounce interval |
